@@ -1,16 +1,17 @@
 import time
 import warnings
-from matplotlib import pyplot as plt
+
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
 
-import AMACC_GBG
+import GBG_plusplus
 
-    
-#计算测试样本到球心的隶属度（欧式距离-球样本数/所有球样本数总和）,测试样本归属隶属度最大的球
+
+#Determine the label of the test sample
 def GB_KNN(X_test, Ball_list):
     predict_label = []
     ball_centers = []
@@ -21,7 +22,7 @@ def GB_KNN(X_test, Ball_list):
     samp_all = np.sum(ball_num_list)
     ball_density_list = ball_num_list / samp_all
     for row in X_test:
-        dis = (AMACC_GBG.calculateDist(row, ball_centers) - ball_density_list).tolist()
+        dis = (GBG_plusplus.calculateDist(row, ball_centers) - ball_density_list).tolist()
         predict_ball = Ball_list[dis.index(min(dis))]
         predict_label.append(predict_ball.label)
     return predict_label, samp_all
@@ -48,22 +49,16 @@ def plot_gb_2(granular_ball_list):
     plt.show()
 
 
-def main(purity):
-    warnings.filterwarnings("ignore")  # 忽略警告
-    data_list = [
-        'parkinsons','sonar','ecoli','ORL_32x32','creditApproval','diabetes',
-        'breastmnist','fourclass', 'splice','COIL20','image-segmentation',
-        'page-blocks','svmguide1','COIL100','pen','organmnist_sagittal',
-        'codrna','mnist','Fashion-MNIST','Skin_NonSkin'
-    ]
+def main(purity=1.0):
+    warnings.filterwarnings("ignore")  # Ignore warnings
+    data_list = ['parkinsons']
     n_splits = 10  #Number of folds crossed by N folds
-    Noise_ratio = 0  #The Noise Ratio of Class Label Noise Data
-    file = open(str(purity) + 'AMACC_GBKNN_' + str(Noise_ratio) + '.txt', mode='a')
-    file.write('Noise_ratio: ' + str(Noise_ratio) + '\n')
+    #Noise_ratio = 0  #The Noise Ratio of Class Label Noise Data
+    file = open(str(purity) + 'GBKNN_plusplus' + '.txt', mode='a')
+    #file.write('Noise_ratio: ' + str(Noise_ratio) + '\n')
     for data_nm in data_list:
         file.write(data_nm + '\n')
-        data_frame = pd.read_csv(r".\noise\noise" + str(Noise_ratio) + '/'+ data_nm + str(Noise_ratio) + ".csv",
-                                 header=None)  
+        data_frame = pd.read_csv(r"./" + data_nm + ".csv",header=None)  # 加载数据集
         data = data_frame.values  
         data_temp = []
         data[data[:, 0] == -1, 0] = 0
@@ -81,7 +76,7 @@ def main(purity):
         train_data = data[:, 1:]  
         train_target = data[:, 0]  
         skf = StratifiedKFold(n_splits, shuffle=True,
-                              random_state=1993)  
+                              random_state=42)  
         sum_acc, sum_f1, sum_ball,  sum_samp = 0.0, 0.0, 0, 0
         times = 0.0
         for train_index, test_index in skf.split(train_data, train_target):
@@ -89,7 +84,7 @@ def main(purity):
             X_test = test[:, 1:]
             Y_test = test[:, 0]
             start = time.time()
-            Ball_list = AMACC_GBG.generateGBList(train, purity)
+            Ball_list = GBG_plusplus.generateGBList(train, purity)
             pre_test, samp_num = GB_KNN(X_test, Ball_list)
             end = time.time()
             sum_samp += samp_num
@@ -117,17 +112,5 @@ def main(purity):
     file.close()
 
 if __name__ == '__main__':
-    purity = []
-    start = 1.0
-    end = 1.0
-    step = 0.1
-    k = start
-    while True:
-        purity.append(round(k, 2))
-        k += step
-        if k >= end:
-            break
-    for i in purity:
-        print('purity:',i)
-        main(i)
+    main()
 
